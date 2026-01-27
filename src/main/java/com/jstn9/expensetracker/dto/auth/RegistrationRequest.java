@@ -3,9 +3,11 @@ package com.jstn9.expensetracker.dto.auth;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 public class RegistrationRequest {
 
     @NotBlank(message = "Username cannot be empty!")

@@ -7,8 +7,11 @@ import com.jstn9.expensetracker.exception.ProfileNotFoundException;
 import com.jstn9.expensetracker.mapper.ProfileMapper;
 import com.jstn9.expensetracker.model.Profile;
 import com.jstn9.expensetracker.model.User;
+import com.jstn9.expensetracker.model.enums.CurrencyType;
 import com.jstn9.expensetracker.repository.ProfileRepository;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 
 @Service
 public class ProfileService {
@@ -27,6 +30,17 @@ public class ProfileService {
         User user = userService.getCurrentUser();
         Profile profile = getCurrentUserProfile(user);
         return profileMapper.toProfileResponse(profile);
+    }
+
+    public void createEmptyProfile(User user){
+        Profile profile = new Profile();
+        profile.setUser(user);
+        profile.setName("");
+        profile.setBalance(BigDecimal.ZERO);
+        profile.setMonthSalary(BigDecimal.ZERO);
+        profile.setCurrencyType(CurrencyType.EUR);
+
+        profileRepository.save(profile);
     }
 
     public void saveProfile(Profile profile){

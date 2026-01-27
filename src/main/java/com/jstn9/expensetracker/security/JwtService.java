@@ -21,10 +21,6 @@ public class JwtService {
     @Value("${jwt.refreshTokenExpiration}")
     private long jwtRefreshTokenExpiration;
 
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
-    }
-
     public String generateAccessToken(UserDetails userDetails) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtAccessTokenExpiration);
@@ -68,5 +64,9 @@ public class JwtService {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 }

@@ -5,6 +5,7 @@ import com.jstn9.expensetracker.dto.transaction.TransactionRequest;
 import com.jstn9.expensetracker.dto.transaction.TransactionResponse;
 import com.jstn9.expensetracker.exception.TransactionNotFoundException;
 import com.jstn9.expensetracker.mapper.TransactionMapper;
+import com.jstn9.expensetracker.model.Category;
 import com.jstn9.expensetracker.model.Profile;
 import com.jstn9.expensetracker.model.Transaction;
 import com.jstn9.expensetracker.model.User;
@@ -24,17 +25,20 @@ public class TransactionService {
     private final ProfileService profileService;
     private final TransactionMapper transactionMapper;
     private final TransactionBalanceService transactionBalanceService;
+    private final CategoryService categoryService;
 
     public TransactionService(TransactionRepository transactionRepository,
                               UserService userService,
                               ProfileService profileService,
                               TransactionMapper transactionMapper,
-                              TransactionBalanceService transactionBalanceService) {
+                              TransactionBalanceService transactionBalanceService,
+                              CategoryService categoryService) {
         this.transactionRepository = transactionRepository;
         this.userService = userService;
         this.profileService = profileService;
         this.transactionMapper = transactionMapper;
         this.transactionBalanceService = transactionBalanceService;
+        this.categoryService = categoryService;
     }
 
     public Page<TransactionResponse> getFiltered(TransactionFilter filter, Pageable pageable) {
@@ -57,11 +61,13 @@ public class TransactionService {
     @Transactional
     public TransactionResponse createTransaction(TransactionRequest request) {
         User user = userService.getCurrentUser();
-        Profile profile = profileService.getCurrentUserProfile(userService.getCurrentUser());
+        Profile profile = profileService.getCurrentUserProfile(user);
 
         Transaction transaction = new Transaction();
 
-        transactionBalanceService.fillTransactionFromRequest(transaction, request, user);
+        Category category = categoryService.getCategoryByIdForUser(request.getCategoryId(), user);
+        transactionMapper.updateEntityFromRequest(request, user, category, transaction);
+
         transactionBalanceService.applyNewBalance(profile, transaction);
 
         Transaction savedTransaction = transactionRepository.save(transaction);
@@ -74,22 +80,23 @@ public class TransactionService {
         User user = userService.getCurrentUser();
         Profile profile = profileService.getCurrentUserProfile(user);
 
-        Transaction oldTransaction = findOldTransactionByIdAndUser(id, user);
+        Transaction transaction = findOldTransactionByIdAndUser(id, user);
 
-        boolean isAmountOrTypeChanged = isAmountOrTypeChanged(oldTransaction, request);
+        boolean isAmountOrTypeChanged = isAmountOrTypeChanged(transaction, request);
 
         if (isAmountOrTypeChanged) {
-            transactionBalanceService.rollbackOldTransactionEffect(profile, oldTransaction);
+            transactionBalanceService.rollbackOldTransactionEffect(profile, transaction);
         }
 
-        transactionBalanceService.fillTransactionFromRequest(oldTransaction, request, user);
+        Category category = categoryService.getCategoryByIdForUser(request.getCategoryId(), user);
+        transactionMapper.updateEntityFromRequest(request, user, category, transaction);
 
         if (isAmountOrTypeChanged) {
-            transactionBalanceService.applyNewBalance(profile, oldTransaction);
+            transactionBalanceService.applyNewBalance(profile, transaction);
             profileService.saveProfile(profile);
         }
 
-        Transaction savedTransaction = transactionRepository.save(oldTransaction);
+        Transaction savedTransaction = transactionRepository.save(transaction);
         return transactionMapper.toTransactionResponse(savedTransaction);
     }
 
@@ -98,13 +105,13 @@ public class TransactionService {
         User user = userService.getCurrentUser();
         Profile profile = profileService.getCurrentUserProfile(user);
 
-        Transaction oldTransaction = findOldTransactionByIdAndUser(id, user);
+        Transaction transaction = findOldTransactionByIdAndUser(id, user);
 
-        transactionBalanceService.rollbackOldTransactionEffect(profile, oldTransaction);
+        transactionBalanceService.rollbackOldTransactionEffect(profile, transaction);
 
         profileService.saveProfile(profile);
 
-        transactionRepository.delete(oldTransaction);
+        transactionRepository.delete(transaction);
     }
 
     private Transaction findOldTransactionByIdAndUser(Long id, User user) {

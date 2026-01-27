@@ -87,6 +87,10 @@ public class CategoryService {
         categoryRepository.delete(category);
     }
 
+    public Category getCategoryByIdForUser(Long id, User user){
+        return findCategoryOrThrowException(id, user);
+    }
+
     private Category findCategoryOrThrowException(Long id, User user){
         return categoryRepository.findByIdAndUser(id, user)
                 .orElseThrow(CategoryNotFoundException::new);
